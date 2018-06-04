@@ -42,7 +42,7 @@ public class TestLogStreamProcessorChronicle extends TestStreamProcessor {
     protected File basePath;
 
     @Before
-    public void skipWindowsThatDontCleanTempFolder() {
+    public void skipWindowsThatDoNotCleanTempFolder() {
         org.junit.Assume.assumeFalse(IS_WIN);
     }
 

@@ -36,6 +36,7 @@ public class TestCommand extends Command {
 
     @Override
     public void updateOptions(Options options) {
+        // nothing to update
     }
 
     @Override

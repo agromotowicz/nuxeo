@@ -30,9 +30,8 @@ import java.util.Map;
 public interface CodecFactory {
 
     /**
-     * Inits the codec factory using a map of options.
+     * Initializes the codec factory using a map of options.
      *
-     * @param options
      */
     void init(Map<String, String> options);
 

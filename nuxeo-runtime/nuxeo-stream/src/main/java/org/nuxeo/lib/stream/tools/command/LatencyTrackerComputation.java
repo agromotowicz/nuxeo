@@ -21,8 +21,11 @@ package org.nuxeo.lib.stream.tools.command;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.nuxeo.lib.stream.codec.Codec;
 import org.nuxeo.lib.stream.computation.AbstractComputation;
 import org.nuxeo.lib.stream.computation.ComputationContext;
@@ -38,6 +41,7 @@ import org.nuxeo.lib.stream.log.internals.LogPartitionGroup;
  * @since 10.1
  */
 public class LatencyTrackerComputation extends AbstractComputation {
+    private static final Log log = LogFactory.getLog(LatencyTrackerComputation.class);
 
     protected static final String OUTPUT_STREAM = "o1";
 
@@ -92,7 +96,7 @@ public class LatencyTrackerComputation extends AbstractComputation {
         debug(String.format("Tracking latency %d/%d", count - remaining, count));
         for (LogPartitionGroup logGroup : logGroups) {
             List<Latency> latencies = getLatenciesForPartition(logGroup, codec);
-            if (latencies == null) {
+            if (latencies.isEmpty()) {
                 continue;
             }
             for (int partition = 0; partition < latencies.size(); partition++) {
@@ -134,7 +138,7 @@ public class LatencyTrackerComputation extends AbstractComputation {
         } catch (Exception e) {
             if (e.getCause() instanceof ClassNotFoundException || e instanceof IllegalStateException) {
                 error("log does not contains Record, remove partition: " + logGroup);
-                return null;
+                return Collections.emptyList();
             }
             throw e;
         }
@@ -161,15 +165,15 @@ public class LatencyTrackerComputation extends AbstractComputation {
 
     protected void debug(String msg) {
         if (verbose) {
-            System.out.println(msg);
+            log.info(msg);
         }
     }
 
     protected void info(String msg) {
-        System.out.println(msg);
+        log.info(msg);
     }
 
     protected void error(String msg) {
-        System.err.println(msg);
+        log.error(msg);
     }
 }

@@ -131,6 +131,7 @@ public class TestLogKafka extends TestLog {
         }
     }
 
+    @SuppressWarnings("squid:S2925")
     @Test
     public void testSeekByTimestamp() throws Exception {
 

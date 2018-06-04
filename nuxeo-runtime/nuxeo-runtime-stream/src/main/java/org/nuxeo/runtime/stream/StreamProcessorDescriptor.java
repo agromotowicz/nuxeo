@@ -108,6 +108,7 @@ public class StreamProcessorDescriptor {
         public Integer concurrency = DEFAULT_CONCURRENCY;
 
         public ComputationDescriptor() {
+            // empty constructor
         }
     }
 
@@ -125,6 +126,7 @@ public class StreamProcessorDescriptor {
         public String codec;
 
         public StreamDescriptor() {
+            // empty constructor
         }
 
     }
