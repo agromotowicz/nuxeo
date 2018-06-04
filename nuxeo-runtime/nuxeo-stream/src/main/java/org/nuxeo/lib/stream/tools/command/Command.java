@@ -20,6 +20,11 @@ package org.nuxeo.lib.stream.tools.command;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Options;
+import org.nuxeo.lib.stream.codec.AvroJsonCodec;
+import org.nuxeo.lib.stream.codec.AvroMessageCodec;
+import org.nuxeo.lib.stream.codec.Codec;
+import org.nuxeo.lib.stream.codec.SerializableCodec;
+import org.nuxeo.lib.stream.computation.Record;
 import org.nuxeo.lib.stream.log.LogManager;
 import org.nuxeo.lib.stream.tools.renderer.MarkdownRenderer;
 import org.nuxeo.lib.stream.tools.renderer.Renderer;
@@ -42,6 +47,24 @@ public abstract class Command {
         default:
             return new TextRenderer();
         }
+    }
+
+    protected Codec<Record> getRecordCodec(String codec) {
+        if (codec == null) {
+            return null;
+        }
+        switch (codec) {
+            case "java":
+                return new SerializableCodec<>();
+            case "avro":
+                return new AvroMessageCodec<>(Record.class);
+            case "avroJson":
+                return new AvroJsonCodec<>(Record.class);
+            case "avroBinary":
+                return new AvroJsonCodec<>(Record.class);
+
+        }
+        throw new IllegalArgumentException("Unknown codec: " + codec);
     }
 
 }

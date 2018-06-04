@@ -22,7 +22,9 @@ import static java.lang.Math.min;
 
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -31,6 +33,7 @@ import java.util.stream.Collectors;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.nuxeo.lib.stream.codec.Codec;
 import org.nuxeo.lib.stream.computation.ComputationMetadataMapping;
 import org.nuxeo.lib.stream.computation.Record;
 import org.nuxeo.lib.stream.computation.Settings;
@@ -66,6 +69,7 @@ public class LogStreamProcessor implements StreamProcessor {
         this.topology = topology;
         this.settings = settings;
         initStreams();
+        initSourceAppenders();
         return this;
     }
 
@@ -142,8 +146,6 @@ public class LogStreamProcessor implements StreamProcessor {
         if (log.isTraceEnabled()) {
             log.trace("lowWatermark: " + ret);
             watermarkTrees.forEach((k, v) -> log.trace("tree " + k + ": " + v));
-            // topology.metadataList().forEach(meta -> System.out.println(" low " + meta.name + " : \t" +
-            // getLowWatermark(meta.name)));
         }
         return ret;
     }
@@ -152,13 +154,10 @@ public class LogStreamProcessor implements StreamProcessor {
     public Latency getLatency(String computationName) {
         Set<String> ancestorsComputations = topology.getAncestorComputationNames(computationName);
         ancestorsComputations.add(computationName);
-        long now = System.currentTimeMillis();
         List<Latency> latencies = new ArrayList<>();
-        ancestorsComputations.forEach(comp -> topology.getMetadata(comp).inputStreams().forEach(stream -> {
-            latencies.add(manager.<Record> getLatency(stream, comp,
-                    (rec -> Watermark.ofValue(rec.watermark).getTimestamp()),
-                    (rec -> rec.key)));
-        }));
+        ancestorsComputations.forEach(comp -> topology.getMetadata(comp).inputStreams().forEach(
+                stream -> latencies.add(manager.getLatency(stream, comp, settings.getCodec(comp),
+                        (rec -> Watermark.ofValue(rec.getWatermark()).getTimestamp()), (Record::getKey)))));
         return Latency.of(latencies);
     }
 
@@ -187,8 +186,24 @@ public class LogStreamProcessor implements StreamProcessor {
         return topology.metadataList()
                        .stream()
                        .map(meta -> new ComputationPool(topology.getSupplier(meta.name()), meta,
-                               getDefaultAssignments(meta), manager))
+                               getDefaultAssignments(meta), manager,
+                               getCodecForStreams(meta.name(), meta.inputStreams()),
+                               getCodecForStreams(meta.name(), meta.outputStreams())))
                        .collect(Collectors.toList());
+    }
+
+    protected Codec<Record> getCodecForStreams(String name, Set<String> streams) {
+        Codec<Record> codec = null;
+        Set<String> codecNames = new HashSet<>();
+        for (String stream : streams) {
+            codec = settings.getCodec(stream);
+            codecNames.add(codec == null ? "legacy" : codec.getName());
+        }
+        if (codecNames.size() > 1) {
+            throw new IllegalArgumentException(String.format("Different codecs for computation %s: %s", name,
+                    Arrays.toString(codecNames.toArray())));
+        }
+        return codec;
     }
 
     protected List<List<LogPartition>> getDefaultAssignments(ComputationMetadataMapping meta) {
@@ -202,6 +217,12 @@ public class LogStreamProcessor implements StreamProcessor {
         log.debug("Initializing streams");
         topology.streamsSet()
                 .forEach(streamName -> manager.createIfNotExists(streamName, settings.getPartitions(streamName)));
+    }
+
+    protected void initSourceAppenders() {
+        log.debug("Initializing source appenders so we ensure they use codec defined in the processor");
+        topology.streamsSet().stream().filter(topology::isSource).forEach(
+                sourceStream -> manager.getAppender(sourceStream, settings.getCodec(sourceStream)));
     }
 
 }
